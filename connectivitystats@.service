@@ -1,0 +1,17 @@
+[Unit]
+Description=Connectivity Stats for %I.
+Requires=systemd-udev-settle.service
+After=systemd-udev-settle.service
+
+[Service]
+# Type=simple
+User=root
+Group=root
+ExecStart=/usr/sbin/ConnectivityStats --interface %I --outfile /var/log/connectivitystats/%I.csv --interval 30 --pingcount 25 --notify
+Restart=always
+PIDFile=/var/run/connectivitystats.pid.%i
+%DISPLAYVAR%
+
+[Install]
+WantedBy=multi-user.target
+
