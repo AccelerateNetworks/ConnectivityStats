@@ -25,6 +25,7 @@ sudo ./ConnectivityStats --help
 As a service:
 ```
 sudo service connectivitystats@if0 start
+```
 
 ## Flags
 
