@@ -14,7 +14,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gen2brain/beeep"
 	probing "github.com/prometheus-community/pro-bing"
 	"github.com/showwin/speedtest-go/speedtest"
 )
@@ -256,7 +255,7 @@ func waitForInterfaceUp(netiface string) bool {
 			logger.Error(err.Error())
 		}
 		if iface.Flags&net.FlagRunning != 0 && iface.Flags&net.FlagBroadcast != 0 && len(addrs) > 0 {
-			time.Sleep(5 * time.Second)
+			time.Sleep(10 * time.Second)
 			return true
 		}
 		time.Sleep(250 * time.Millisecond)
@@ -357,9 +356,6 @@ func appendFile(path string, data string) error {
 }
 
 func runTest(interfaces []string, host string, pingCount int) {
-	if NOTIFY {
-		beeep.Alert("ConnectivityStats", fmt.Sprintf("A Connectivity measurement is running for %s.\nYour internet connection will be temporarily unavailable.", strings.Join(interfaces, ", ")), "")
-	}
 
 	activeInterfaces := []string{}
 	availableInterfaces, err := net.Interfaces()
@@ -396,10 +392,6 @@ func runTest(interfaces []string, host string, pingCount int) {
 	for _, iface := range activeInterfaces {
 		setInterface(iface, "up")
 	}
-
-	if NOTIFY {
-		beeep.Alert("ConnectivityStats", fmt.Sprintf("The Connectivity measurement for %s is finished.", strings.Join(interfaces, ", ")), "")
-	}
 }
 
 func cleanup() {
@@ -423,20 +415,6 @@ func main() {
 	SAVEFILES = false
 	TIMEOUT = time.Duration(60 * time.Second)
 	NOTIFY = false
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
-	done := make(chan bool, 1)
-
-	go func() {
-		sig := <-sigs
-		if sig == syscall.SIGTERM {
-			logger.Info("\nReceived signal:", sig)
-			cleanup()
-			done <- true
-		}
-	}()
 
 	usr, err := user.Current()
 
@@ -571,6 +549,19 @@ func main() {
 		}
 		runTest(interfaces, host, pingCount)
 	} else {
+
+		sigs := make(chan os.Signal, 1)
+		signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+		go func() {
+			sig := <-sigs
+			if sig == syscall.SIGTERM {
+				logger.Info("\nReceived signal:", sig)
+				cleanup()
+				os.Exit(0)
+			}
+		}()
+
 		logger.Info(fmt.Sprintf("Testing interfaces %s every %d minutes.", strings.Join(interfaces, ", "), interval))
 		if SAVEFILES {
 			logger.Info(fmt.Sprintf("Saving data to %s", OUTPATH))
@@ -587,8 +578,6 @@ func main() {
 	for _, iface := range interfaces {
 		setInterface(iface, "up")
 	}
-
-	<-done
 
 }
 
